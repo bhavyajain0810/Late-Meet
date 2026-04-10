@@ -28,6 +28,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // ——— Start Audio Capture (User Gesture) ———
+  const audioBtn = document.getElementById('dash-start-audio-btn');
+  audioBtn?.addEventListener('click', async () => {
+    try {
+      await chrome.runtime.sendMessage({ type: 'START_AUDIO' });
+      setAudioBtnActive(true);
+    } catch (err) {
+      console.error('[Dashboard] Failed to start audio:', err);
+    }
+  });
+
+  function setAudioBtnActive(active) {
+    if (!audioBtn) return;
+    if (active) {
+      audioBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right: 6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Audio Active';
+      audioBtn.classList.add('active');
+      audioBtn.disabled = true;
+    } else {
+      audioBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right: 6px;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg> Start Audio';
+      audioBtn.classList.remove('active');
+      audioBtn.disabled = false;
+    }
+  }
+
   // ——— Duration Timer ———
   let timerInterval = null;
 
@@ -48,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusDot.classList.add('active');
       statusText.textContent = `Meeting active — ${state.meetingId || 'unknown'}`;
       if (state.startTime) startTimer(state.startTime);
+      setAudioBtnActive(state.audioActive || false);
     } else {
       statusDot.classList.remove('active');
       statusText.textContent = 'No active meeting';
@@ -159,8 +184,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="action-check"></div>
         <div class="action-info">
           <div class="action-task">${a.task}</div>
-          ${a.owner ? `<span class="action-owner">👤 ${a.owner}</span>` : ''}
-          ${a.deadline ? `<div class="action-deadline">📅 ${a.deadline}</div>` : ''}
+          ${a.owner ? `<span class="action-owner"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right:2px"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>${a.owner}</span>` : ''}
+          ${a.deadline ? `<div class="action-deadline"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right:2px"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>${a.deadline}</div>` : ''}
         </div>
       </div>
     `).join('');
@@ -181,7 +206,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="participant-item">
           <div class="participant-avatar">${initials}</div>
           <span class="participant-name">${name}</span>
-          <span class="participant-tag ${isLate ? 'late' : 'original'}">${isLate ? '🚪 Late' : 'Original'}</span>
+          <span class="participant-tag ${isLate ? 'late' : 'original'}">
+            ${isLate ? '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right:2px"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" x2="3" y1="12" y2="12"></line></svg>Late' : 'Original'}
+          </span>
         </div>
       `;
     }).join('');
@@ -193,9 +220,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       lateCard.style.display = 'block';
       lateList.innerHTML = lateJoiners.map(name => `
         <div class="late-joiner-card-item">
-          <span>🚪</span>
-          <span style="font-weight: 600; color: #FCD34D;">${name}</span>
-          <span style="margin-left: auto; color: #475569; font-size: 11px;">Brief sent ✓</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="color: #A3A3A3;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" x2="3" y1="12" y2="12"></line></svg>
+          <span style="font-weight: 500; color: #FAFAFA;">${name}</span>
+          <span style="margin-left: auto; color: #737373; font-size: 11px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right:2px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>Brief sent
+          </span>
         </div>
       `).join('');
     } else {
@@ -226,12 +255,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function getTimelineIcon(event) {
-    if (event.includes('started')) return '🟢';
-    if (event.includes('ended')) return '🔴';
-    if (event.includes('joined')) return '🚪';
-    if (event.includes('Topic')) return '💬';
-    if (event.includes('Decision')) return '✅';
-    return '📌';
+    const iconBase = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">';
+    if (event.includes('started')) return iconBase + '<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>';
+    if (event.includes('ended')) return iconBase + '<rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 12h6"></path></svg>';
+    if (event.includes('joined')) return iconBase + '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" x2="3" y1="12" y2="12"></line></svg>';
+    if (event.includes('Topic')) return iconBase + '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+    if (event.includes('Decision')) return iconBase + '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+    return iconBase + '<line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="18" y1="20" y2="20"></line><line x1="14" x2="14" y1="4" y2="10"></line></svg>';
   }
 
   // ——— Export ———
@@ -272,9 +302,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       await navigator.clipboard.writeText(markdown);
 
       const btn = document.getElementById('export-btn');
-      btn.innerHTML = '<span>✅</span> Copied to clipboard!';
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right:6px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Copied to clipboard!';
       setTimeout(() => {
-        btn.innerHTML = '<span>📥</span> Export Summary';
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> Export Summary';
       }, 2000);
     } catch (err) {
       console.error('Export failed:', err);
