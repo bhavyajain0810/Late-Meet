@@ -58,6 +58,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // ——— Start Copilot (Audio Capture with User Gesture) ———
+  const copilotBtn = document.getElementById('start-copilot-btn');
+  copilotBtn?.addEventListener('click', async () => {
+    try {
+      await chrome.runtime.sendMessage({ type: 'START_AUDIO' });
+      setCopilotActive(true);
+    } catch (err) {
+      console.error('Failed to start audio capture:', err);
+    }
+  });
+
+  function setCopilotActive(active) {
+    if (!copilotBtn) return;
+    if (active) {
+      copilotBtn.classList.add('active');
+      copilotBtn.querySelector('.copilot-btn-text').textContent = 'Copilot Active';
+      copilotBtn.querySelector('.copilot-btn-icon').textContent = '✅';
+      copilotBtn.disabled = true;
+    } else {
+      copilotBtn.classList.remove('active');
+      copilotBtn.querySelector('.copilot-btn-text').textContent = 'Start Copilot';
+      copilotBtn.querySelector('.copilot-btn-icon').textContent = '🎙️';
+      copilotBtn.disabled = false;
+    }
+  }
+
   // ——— Get Current State ———
   try {
     const state = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
@@ -115,6 +141,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('decision-count').textContent = state.decisions?.length || 0;
       document.getElementById('action-count').textContent = state.actionItems?.length || 0;
       document.getElementById('sentiment-icon').textContent = getSentimentEmoji(state.sentiment);
+
+      // Audio capture status
+      setCopilotActive(state.audioActive || false);
       
       // Topics List
       const topicsList = document.getElementById('topics-list');
