@@ -408,6 +408,31 @@ async function startAudioCapture(tabId, meetingId, meetingUrl, providedStreamId 
   }
 }
 
+async function scanForMeetTabs() {
+  try {
+    const tabs = await chrome.tabs.query({ url: 'https://meet.google.com/*' });
+    if (tabs.length > 0) {
+      // Find the first tab with a meeting code
+      for (const tab of tabs) {
+        const urlMatch = tab.url?.match(/meet\.google\.com\/([a-z\-]+)/);
+        const meetingId = urlMatch ? urlMatch[1] : null;
+        if (meetingId && meetingId !== 'new') {
+          if (!state.isActive) {
+            state.meetingId = meetingId;
+            state.meetingUrl = tab.url;
+            state.targetTabId = tab.id;
+            console.log('[LateMeet] Proactively detected meeting:', meetingId);
+            await broadcastStateUpdate();
+          }
+          return;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[LateMeet] Scan for meet tabs failed:', err);
+  }
+}
+
 async function stopAudioCapture(reason = 'Stopped') {
   try {
     await chrome.runtime.sendMessage({ type: 'OFFSCREEN_STOP_CAPTURE' });
@@ -483,6 +508,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     switch (message?.type) {
       case 'GET_STATE': {
+        if (!state.isActive) {
+          await scanForMeetTabs();
+        }
         sendResponse(snapshot());
         return;
       }
@@ -584,3 +612,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true;
 });
+
+// Proactive scan on startup/load
+scanForMeetTabs();
