@@ -41,6 +41,7 @@
   <!-- Tabs -->
   <nav class="dash-tabs">
     <button class="dash-tab active" data-tab="overview">Overview</button>
+    <button class="dash-tab" data-tab="transcript">Transcript</button>
     <button class="dash-tab" data-tab="topics">Topics</button>
     <button class="dash-tab" data-tab="decisions">Decisions</button>
     <button class="dash-tab" data-tab="actions">Actions</button>
@@ -231,7 +232,24 @@
       </div>
     </section>
 
-    <!-- SESSIONS TAB -->
+    <!-- TRANSCRIPT TAB -->
+    <section id="tab-transcript" class="tab-panel">
+      <div class="dash-card glow-card">
+        <div class="dash-card-head">
+          <span class="dash-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          </span>
+          <span class="dash-card-title">Live Transcript</span>
+          <span class="live-indicator">
+            <span class="live-dot"></span>LIVE
+          </span>
+        </div>
+        <div class="transcript-info">Each entry shows who spoke, what was said, and when. Audio entries are from the Whisper transcription.</div>
+        <div id="dash-transcript-list" class="transcript-list">
+          <div class="empty-msg">No transcript yet. Start audio to begin capturing speech.</div>
+        </div>
+      </div>
+    </section>
     <section id="tab-sessions" class="tab-panel">
       <div class="dash-card">
         <div class="dash-card-head">
