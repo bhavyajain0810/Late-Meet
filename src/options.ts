@@ -100,12 +100,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     )?.value.trim();
 
     const parsedInterval = intervalSlider ? parseInt(intervalSlider.value, 10) : 30;
+
     const validatedInterval =
       Number.isNaN(parsedInterval) || !Number.isFinite(parsedInterval) ? 30 : parsedInterval;
 
+    const parsedVadThreshold = vadSlider ? parseFloat(vadSlider.value) : 0.012;
+
+    const validatedVadThreshold =
+      Number.isNaN(parsedVadThreshold) || !Number.isFinite(parsedVadThreshold)
+        ? 0.012
+        : parsedVadThreshold;
+
     const newSettings = {
       summarizationInterval: validatedInterval,
-      vadThreshold: vadSlider ? parseFloat(vadSlider.value) : 0.012,
+      vadThreshold: validatedVadThreshold,
       aiModel: (document.getElementById("ai-model") as HTMLSelectElement)?.value,
       lateJoinerBriefing: (document.getElementById("late-joiner-toggle") as HTMLInputElement)
         ?.checked,
