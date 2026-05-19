@@ -1,4 +1,7 @@
-0; // MV3 service worker for Late Meet
+// MV3 service worker for Late Meet
+import { initTheme } from "./theme.js";
+
+initTheme();
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_WHISPER_URL = "https://api.openai.com/v1/audio/transcriptions";

@@ -346,3 +346,31 @@ body {
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* Color Circle Grid Picker Styles */
+.accent-picker-grid {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.color-dot:hover {
+  transform: scale(1.15);
+}
+
+/* Draw a clear white/dark focus border frame ring around the chosen color ring bubble option */
+.color-dot.active {
+  box-shadow:
+    0 0 0 2px var(--bg-app),
+    0 0 0 4px var(--text-main);
+  transform: scale(1.05);
+}

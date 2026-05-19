@@ -1,0 +1,86 @@
+// shared/theme.ts
+
+type ThemeMode = "light" | "dark" | "system";
+
+export interface Settings {
+  theme: ThemeMode;
+  accent: string;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  theme: "system",
+  accent: "210, 100%, 50%",
+};
+
+// Mode Helper: Safe to evaluate anywhere
+function resolveTheme(theme: ThemeMode): "light" | "dark" {
+  if (theme === "system") {
+    // Check if window exists before calling matchMedia
+    if (typeof window !== "undefined" && window.matchMedia) {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return "dark"; // Safe headless default fallback for background context
+  }
+  return theme;
+}
+
+export async function getSettings(): Promise<Settings> {
+  const result = await chrome.storage.local.get("settings");
+  return {
+    ...DEFAULT_SETTINGS,
+    ...(result.settings ?? {}),
+  };
+}
+
+export function applyTheme(settings: Settings): void {
+  // Guard clause: If there is no DOM available, skip styling entirely
+  if (typeof document === "undefined") return;
+
+  const root = document.documentElement;
+  const activeTheme = resolveTheme(settings.theme);
+
+  root.dataset.theme = activeTheme;
+  root.style.setProperty("--accent-color", settings.accent);
+}
+
+export async function syncTheme(): Promise<void> {
+  const settings = await getSettings();
+  applyTheme(settings);
+}
+
+function handleStorageChange(
+  changes: { [key: string]: chrome.storage.StorageChange },
+  namespace: string,
+): void {
+  if (namespace !== "local" || !changes.settings?.newValue) {
+    return;
+  }
+  const settings: Settings = {
+    ...DEFAULT_SETTINGS,
+    ...changes.settings.newValue,
+  };
+  applyTheme(settings);
+}
+
+async function handleSystemThemeChange(): Promise<void> {
+  const settings = await getSettings();
+  if (settings.theme === "system") {
+    applyTheme(settings);
+  }
+}
+
+export function watchTheme(): void {
+  chrome.storage.onChanged.addListener(handleStorageChange);
+
+  // Guard media queries listening against headless worker processes
+  if (typeof window !== "undefined" && window.matchMedia) {
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", handleSystemThemeChange);
+  }
+}
+
+export async function initTheme(): Promise<void> {
+  await syncTheme();
+  watchTheme();
+}
