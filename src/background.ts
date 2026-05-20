@@ -464,15 +464,24 @@ Return a JSON object with these exact keys:
   if (topicDetectionEnabled) {
     state.topics = Array.isArray(parsed.topics) ? parsed.topics : state.topics;
     state.currentTopic = parsed.currentTopic || state.currentTopic;
+  } else {
+    state.topics = [];
+    state.currentTopic = "";
   }
   if (decisionDetectionEnabled) {
     state.decisions = Array.isArray(parsed.decisions) ? parsed.decisions : state.decisions;
+  } else {
+    state.decisions = [];
   }
   if (actionExtractionEnabled) {
     state.actionItems = Array.isArray(parsed.actionItems) ? parsed.actionItems : state.actionItems;
+  } else {
+    state.actionItems = [];
   }
   if (sentimentAnalysisEnabled) {
     state.sentiment = parsed.sentiment || state.sentiment;
+  } else {
+    state.sentiment = "neutral";
   }
   state.keyInsights = Array.isArray(parsed.keyInsights) ? parsed.keyInsights : state.keyInsights;
   state.questionsRaised = Array.isArray(parsed.questionsRaised)
