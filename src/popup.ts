@@ -208,6 +208,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const iconEl = copilotBtn.querySelector(".copilot-btn-icon");
     const textEl = copilotBtn.querySelector(".copilot-btn-text");
 
+    const getMiniBtnLabelNode = () => {
+      if (!miniBtn) return null;
+      return (
+        Array.from(miniBtn.childNodes)
+          .reverse()
+          .find((n) => n.nodeType === Node.TEXT_NODE && String(n.textContent || "").trim()) ||
+        null
+      );
+    };
+
     if (active) {
       copilotBtn.classList.remove("loading");
       copilotBtn.classList.add("active");
@@ -220,7 +230,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         miniBtn.style.display = "flex";
         miniBtn.classList.add("active");
         miniBtn.title = "Stop audio capture";
-        const labelNode = Array.from(miniBtn.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
+        const labelNode = getMiniBtnLabelNode();
         if (labelNode) labelNode.textContent = " Stop Audio";
       }
     } else {
@@ -234,7 +244,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         miniBtn.style.display = "flex";
         miniBtn.classList.remove("active");
         miniBtn.title = "Start audio capture";
-        const labelNode = Array.from(miniBtn.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
+        const labelNode = getMiniBtnLabelNode();
         if (labelNode) labelNode.textContent = " Start Audio";
       }
     }
