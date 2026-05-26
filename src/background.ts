@@ -1,7 +1,4 @@
 // MV3 service worker for Late Meet
-import { initTheme } from "./theme.js";
-
-initTheme();
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_WHISPER_URL = "https://api.openai.com/v1/audio/transcriptions";
@@ -15,7 +12,6 @@ const ELEVENLABS_STT_MODEL = "scribe_v2";
 // Delay late-joiner auto messages until 10s to avoid lobby/join churn spam.
 const MIN_MEETING_DURATION_FOR_WELCOME = 10;
 
-import { State, ActionItem } from "./types";
 import { ActionItem, Decision, State } from "./types";
 import { audioFileExtensionForMimeType, isChunkViable } from "./audioProcessing";
 import { getElevenLabsApiKey, getOpenAiApiKey } from "./utils/credentials";
