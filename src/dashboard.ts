@@ -229,6 +229,26 @@ document.addEventListener("DOMContentLoaded", async () => {
               return;
             }
 
+          try {
+            const response = await chrome.runtime.sendMessage({
+              type: "MANUAL_START_AUDIO",
+              tabId: meetTab.id,
+              meetingId: meetingId,
+              meetingUrl: meetTab.url || null,
+              streamId: streamId,
+              includeMicrophone: true,
+            });
+
+            if (response && response.success) {
+              setAudioBtnActive(true);
+              // Start timer immediately
+              startTimer(Date.now());
+              const statusText = document.getElementById("dash-status-text");
+              const statusDot = document.querySelector(".dash-status-dot");
+              if (statusText) statusText.textContent = `Meeting active — ${meetingId || "unknown"}`;
+              if (statusDot) statusDot.classList.add("active");
+            } else {
+              throw new Error(response?.error || "Failed to start audio");
             try {
               const response = await chrome.runtime.sendMessage({
                 type: "MANUAL_START_AUDIO",

@@ -155,6 +155,44 @@ document.addEventListener("DOMContentLoaded", async () => {
               );
               return;
             }
+          }
+
+          if (!streamId) {
+            handleStartAudioError(
+              new Error(
+                "Capture permission denied. Try clicking the extension icon again on the Meet tab.",
+              ),
+            );
+            return;
+          }
+
+          try {
+            const response = await chrome.runtime.sendMessage({
+              type: "MANUAL_START_AUDIO",
+              tabId: meetTab.id,
+              meetingId: meetingId,
+              meetingUrl: meetTab.url || null,
+              streamId: streamId,
+              includeMicrophone: true,
+            });
+
+            if (response && response.success) {
+              // Clear loading state before setting active state
+              btn.disabled = false;
+              btn.classList.remove("loading");
+              setCopilotActive(true);
+              // Immediately show meeting section and start timer
+              if (meetingSection) meetingSection.style.display = "block";
+              if (noMeetingSection) noMeetingSection.style.display = "none";
+              if (meetingId) {
+                const meetingIdEl = document.getElementById("meeting-id");
+                if (meetingIdEl) meetingIdEl.textContent = meetingId;
+              }
+              const badge = document.getElementById("status-badge");
+              if (badge) {
+                badge.className = "status-badge active";
+                const statusText = badge.querySelector(".status-text");
+                if (statusText) statusText.textContent = "Recording...";
 
             try {
               const response = await chrome.runtime.sendMessage({
