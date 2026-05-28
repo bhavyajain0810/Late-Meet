@@ -59,6 +59,18 @@ async function persistActionStatuses() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // ——— Transcript Search DOM Elements (Queried early to prevent TDZ) ———
+  const searchInput = document.getElementById("transcript-search-input") as HTMLInputElement | null;
+  const searchCounter = document.getElementById(
+    "transcript-search-counter",
+  ) as HTMLSpanElement | null;
+  const searchPrevBtn = document.getElementById("search-prev") as HTMLButtonElement | null;
+  const searchNextBtn = document.getElementById("search-next") as HTMLButtonElement | null;
+  const searchClearBtn = document.getElementById("search-clear") as HTMLButtonElement | null;
+  const transcriptContainer = document.getElementById(
+    "dash-transcript-list",
+  ) as HTMLDivElement | null;
+
   await loadActionStatuses();
   // ——— Waveform Visualizer ———
   const WAVEFORM_N = 32;
@@ -678,8 +690,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
       .join("");
 
-    // Auto-scroll to bottom
-    container.scrollTop = container.scrollHeight;
+    // Auto-scroll to bottom if not currently searching
+    const searchInput = document.getElementById(
+      "transcript-search-input",
+    ) as HTMLInputElement | null;
+    if (searchInput && searchInput.value.trim() !== "") {
+      // Re-apply search highlight when new transcript lines arrive
+      executeTranscriptSearch();
+    } else {
+      container.scrollTop = container.scrollHeight;
+    }
   }
 
   // ——— Export Helpers ———
@@ -996,6 +1016,207 @@ document.addEventListener("DOMContentLoaded", async () => {
     downloadFile(md, filename, "text/markdown");
     showToast("Downloaded as .md file", "success");
   }
+
+  // ——— Transcript Search Phase 2 ———
+  let searchMatches: HTMLElement[] = [];
+  let currentMatchIndex = -1;
+  let searchDebounceTimer: number | null = null;
+
+  function clearTranscriptSearch() {
+    console.log("[Search] Clearing search state...");
+    if (
+      !searchInput ||
+      !searchCounter ||
+      !searchClearBtn ||
+      !searchPrevBtn ||
+      !searchNextBtn ||
+      !transcriptContainer
+    )
+      return;
+
+    // Remove all mark tags cleanly without breaking inner HTML
+    const marks = transcriptContainer.querySelectorAll("mark.search-match");
+    marks.forEach((mark) => {
+      const parent = mark.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(mark.textContent || ""), mark);
+        parent.normalize();
+      }
+    });
+
+    searchMatches = [];
+    currentMatchIndex = -1;
+    searchInput.value = "";
+    searchCounter.textContent = "";
+    searchClearBtn.style.display = "none";
+    searchPrevBtn.disabled = true;
+    searchNextBtn.disabled = true;
+
+    transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+    if (searchCounter) {
+      searchCounter.style.display = "none";
+    }
+  }
+
+  function updateActiveSearchMatch() {
+    if (searchMatches.length === 0) return;
+
+    searchMatches.forEach((el) => el.classList.remove("active"));
+
+    if (currentMatchIndex >= 0 && currentMatchIndex < searchMatches.length) {
+      const activeMatch = searchMatches[currentMatchIndex];
+      activeMatch.classList.add("active");
+      activeMatch.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      if (searchCounter) {
+        searchCounter.textContent = `${currentMatchIndex + 1} of ${searchMatches.length}`;
+      }
+      console.log(`[Search] Highlighted match ${currentMatchIndex + 1} of ${searchMatches.length}`);
+    }
+  }
+
+  function executeTranscriptSearch() {
+    console.log("[Search] Starting transcript search...");
+    if (
+      !searchInput ||
+      !searchCounter ||
+      !searchClearBtn ||
+      !searchPrevBtn ||
+      !searchNextBtn ||
+      !transcriptContainer
+    ) {
+      console.log("[Search] Missing DOM elements. Aborting.");
+      return;
+    }
+
+    const query = searchInput.value.toLowerCase().trim();
+    console.log("[Search] Query:", query);
+
+    // Clean existing marks
+    const marks = transcriptContainer.querySelectorAll("mark.search-match");
+    marks.forEach((mark) => {
+      const parent = mark.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(mark.textContent || ""), mark);
+        parent.normalize();
+      }
+    });
+    console.log(`[Search] Cleaned ${marks.length} previous marks.`);
+
+    searchMatches = [];
+    currentMatchIndex = -1;
+
+    if (!query) {
+      searchCounter.textContent = "";
+      searchClearBtn.style.display = "none";
+      searchPrevBtn.disabled = true;
+      searchNextBtn.disabled = true;
+      if (searchCounter) searchCounter.style.display = "none";
+      console.log("[Search] Empty query. Cleared UI.");
+      return;
+    }
+
+    searchClearBtn.style.display = "flex";
+
+    // Safely iterate text nodes to avoid mutating DOM structure
+    const textNodes: Node[] = [];
+    const walker = document.createTreeWalker(transcriptContainer, NodeFilter.SHOW_TEXT, null);
+
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeValue && node.nodeValue.trim() !== "") {
+        // Skip text inside empty-msg
+        const parentEl = node.parentElement as HTMLElement | null;
+        if (parentEl && !parentEl.classList.contains("empty-msg")) {
+          textNodes.push(node);
+        }
+      }
+    }
+    console.log(`[Search] Found ${textNodes.length} valid text nodes to search.`);
+
+    textNodes.forEach((textNode) => {
+      const textContent = textNode.nodeValue || "";
+      const lowerText = textContent.toLowerCase();
+      const startIndex = 0;
+      let index = lowerText.indexOf(query, startIndex);
+
+      if (index === -1) return;
+
+      const fragment = document.createDocumentFragment();
+      let lastIndex = 0;
+
+      while (index !== -1) {
+        if (index > lastIndex) {
+          fragment.appendChild(document.createTextNode(textContent.substring(lastIndex, index)));
+        }
+
+        const mark = document.createElement("mark");
+        mark.className = "search-match";
+        mark.textContent = textContent.substring(index, index + query.length);
+        fragment.appendChild(mark);
+        searchMatches.push(mark);
+
+        lastIndex = index + query.length;
+        index = lowerText.indexOf(query, lastIndex);
+      }
+
+      if (lastIndex < textContent.length) {
+        fragment.appendChild(document.createTextNode(textContent.substring(lastIndex)));
+      }
+
+      if (textNode.parentNode) {
+        textNode.parentNode.replaceChild(fragment, textNode);
+      }
+    });
+
+    console.log(`[Search] Found matches: ${searchMatches.length}`);
+
+    if (searchMatches.length > 0) {
+      currentMatchIndex = 0;
+      searchPrevBtn.disabled = false;
+      searchNextBtn.disabled = false;
+      if (searchCounter) searchCounter.style.display = "inline-flex";
+      updateActiveSearchMatch();
+    } else {
+      if (searchCounter) {
+        searchCounter.textContent = "0 of 0";
+        searchCounter.style.display = "inline-flex";
+      }
+      searchPrevBtn.disabled = true;
+      searchNextBtn.disabled = true;
+    }
+  }
+
+  searchInput?.addEventListener("input", () => {
+    if (searchDebounceTimer) window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = window.setTimeout(executeTranscriptSearch, 300);
+  });
+
+  searchInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      clearTranscriptSearch();
+    } else if (e.key === "Enter") {
+      if (e.shiftKey) {
+        searchPrevBtn?.click();
+      } else {
+        searchNextBtn?.click();
+      }
+    }
+  });
+
+  searchClearBtn?.addEventListener("click", clearTranscriptSearch);
+
+  searchPrevBtn?.addEventListener("click", () => {
+    if (searchMatches.length === 0) return;
+    currentMatchIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+    updateActiveSearchMatch();
+  });
+
+  searchNextBtn?.addEventListener("click", () => {
+    if (searchMatches.length === 0) return;
+    currentMatchIndex = (currentMatchIndex + 1) % searchMatches.length;
+    updateActiveSearchMatch();
+  });
 
   // Load sessions on tab switch
   document.querySelector('[data-tab="sessions"]')?.addEventListener("click", loadSavedSessions);
