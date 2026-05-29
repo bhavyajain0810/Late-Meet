@@ -191,7 +191,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             updatePeople(lastState?.participants || [], lastState?.lateJoiners || []);
           else if (tabId === "timeline") updateTimeline(lastState?.timeline || []);
           else if (tabId === "transcript") updateTranscript(lastState?.transcript || []);
-          else if (tabId === "sessions") loadSavedSessions();
+          else if (tabId === "sessions") loadMeetingHistory();
         }, 150);
       }
     });
@@ -227,10 +227,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       const historyTab = document.querySelector('[data-tab="history"]');
       if (historyTab?.classList.contains("active")) {
         loadMeetingHistory();
+      }
       // Reload sessions if on that tab
       const sessionsTab = document.querySelector('[data-tab="sessions"]');
       if (sessionsTab?.classList.contains("active")) {
-        loadSavedSessions();
+        loadMeetingHistory();
       } else {
         loadedTabs.delete("sessions");
       }

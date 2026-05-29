@@ -1085,6 +1085,7 @@ body::-webkit-scrollbar-thumb,
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
 /* ——— Skeleton Loader ——— */
 @keyframes shimmer {
   0% {
