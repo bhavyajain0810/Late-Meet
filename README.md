@@ -41,7 +41,7 @@
 - [🚀 Active & Open GSSoC 2026 Issues](#-active--open-gssoc-2026-issues)
 - [🗺️ Project Roadmap](#%EF%B8%8F-project-roadmap)
 - [🐛 Known Issues](#-known-issues)
-- [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
+- [⌨️ Keyboard Shortcuts](#keyboard-shortcuts)
 - [🔒 Security & Privacy First](#-security--privacy-first)
 - [📜 License](#-license)
 
