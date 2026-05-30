@@ -1,6 +1,15 @@
 import { getStorageStats, formatBytes, deleteSavedMeetingSession } from "./utils/storageUtils";
 import { StorageStats } from "./types";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export async function renderStorageDashboard(container: HTMLElement): Promise<void> {
   container.innerHTML = '<p class="storage-loading">Loading storage data…</p>';
 
@@ -61,10 +70,10 @@ function buildDashboardHTML(stats: StorageStats): string {
                 (m) => `
               <li class="storage-meeting-item">
                 <div class="storage-meeting-info">
-                  <span class="storage-meeting-title">${m.title}</span>
+                  <span class="storage-meeting-title">${escapeHtml(m.title)}</span>
                   <span class="storage-meeting-size">${formatBytes(m.totalBytes)}</span>
                 </div>
-                <button class="storage-delete-btn" data-id="${m.id}">Delete</button>
+                <button class="storage-delete-btn" data-id="${escapeHtml(m.id)}">Delete</button>
               </li>
             `,
               )
