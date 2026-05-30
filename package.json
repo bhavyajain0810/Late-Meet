@@ -45,7 +45,7 @@
     "@types/node": "^20.19.41",
     "@typescript-eslint/eslint-plugin": "^8.59.3",
     "@typescript-eslint/parser": "^8.59.3",
-    "chrome-types": "^0.1.428",
+    "chrome-types": "^0.1.429",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.6.0",
