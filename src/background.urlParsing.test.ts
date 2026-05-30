@@ -78,7 +78,7 @@ function installChromeMock(options: MockChromeOptions = {}) {
         },
       },
       onRemoved: { addListener: () => {} },
-      get: async (_tabId: number) => mockGetTabResult,
+      get: async () => mockGetTabResult,
       query: async () => [],
       sendMessage: async () => {},
     },
