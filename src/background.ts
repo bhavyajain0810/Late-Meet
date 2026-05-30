@@ -1153,46 +1153,37 @@ async function stopAudioCapture(reason = "Stopped") {
 }
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.url) {
-    try {
-      const parsedUrl = new URL(tab.url);
-      if (parsedUrl.hostname !== "meet.google.com") {
-        return;
-      }
+  if (changeInfo.status !== "complete" || !tab.url) return;
+  try {
+    const parsedUrl = new URL(tab.url);
+    if (parsedUrl.hostname !== "meet.google.com") return;
 
-      const pathMatch = /^\/([a-z-]+)/.exec(parsedUrl.pathname);
-      const meetingId = pathMatch ? pathMatch[1] : null;
+    const pathMatch = /^\/([a-z-]+)/.exec(parsedUrl.pathname);
+    const meetingId = pathMatch ? pathMatch[1] : null;
 
-      if (meetingId && meetingId !== "new") {
-        if (!state.isActive) {
-          resetState();
-          state.isActive = true;
-          state.meetingId = meetingId;
-          state.meetingUrl = tab.url || null;
-          state.targetTabId = tabId || null;
-          state.startTime = Date.now();
-          state.participants = ["You"];
-          await broadcastStateUpdate();
-        }
+    if (meetingId && meetingId !== "new") {
+      if (!state.isActive) {
+        resetState();
+        state.isActive = true;
+        state.meetingId = meetingId;
+        state.meetingUrl = tab.url || null;
+        state.targetTabId = tabId || null;
+        state.startTime = Date.now();
+        state.participants = ["You"];
+        await broadcastStateUpdate();
       }
-    } catch {
-      // Ignore invalid or non-standard URLs
     }
+  } catch {
+    // invalid URL — ignore silently
   }
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
-    if (!tab.url) {
-      return;
-    }
-
+    if (!tab.url) return;
     const parsedUrl = new URL(tab.url);
-    if (parsedUrl.hostname !== "meet.google.com") {
-      return;
-    }
-
+    if (parsedUrl.hostname !== "meet.google.com") return;
     const pathMatch = /^\/([a-z-]+)/.exec(parsedUrl.pathname);
     const meetingId = pathMatch ? pathMatch[1] : null;
     if (meetingId && meetingId !== "new" && !state.isActive) {
