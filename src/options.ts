@@ -1,5 +1,6 @@
 import { getApiCredentials, saveApiCredentials } from "./utils/credentials";
 import { validateOpenAIKey, validateElevenLabsKey } from "./utils/api.js";
+import { renderStorageDashboard } from "./storageDashboard";
 
 interface Settings {
   summarizationInterval?: number;
@@ -239,4 +240,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       saveBtn.textContent = originalText;
     }
   });
+  // ——— Storage Dashboard ———
+  const storageContainer = document.getElementById("storage-dashboard-container");
+  if (storageContainer) {
+    await renderStorageDashboard(storageContainer);
+  }
 });
