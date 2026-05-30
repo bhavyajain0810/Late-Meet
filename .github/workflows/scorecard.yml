@@ -34,6 +34,7 @@ jobs:
           publish_results: true
 
       - name: Upload Scorecard SARIF
+        # actionlint-disable-next-line: action-input-not-defined
         uses: github/codeql-action/upload-sarif@83f53effe54e4c278e34898246f6f1947b198118 # v3.25.7
         with:
           sarif_file: results.sarif
