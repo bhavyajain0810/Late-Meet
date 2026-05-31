@@ -506,7 +506,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       neutral: { width: "50%", text: "Neutral 😐", color: "#94A3B8" },
       mixed: { width: "55%", text: "Mixed 🤔", color: "#FBBF24" },
     };
-    const s = map[sentiment] || map.neutral;
+    const normalizedSentiment = (sentiment || "").toLowerCase();
+    const s = map[normalizedSentiment] || map.neutral;
     if (fill) fill.style.width = s.width;
     if (label) {
       label.textContent = s.text;
