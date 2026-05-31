@@ -47,7 +47,21 @@ initTheme();
     ],
     activeSpeakerIndicators: [
       '[aria-label*="speaking" i]',
+      '[aria-label*="hablando" i]',
+      '[aria-label*="parle" i]',
+      '[aria-label*="spricht" i]',
+      '[aria-label*="falando" i]',
+      '[aria-label*="parlando" i]',
+      '[aria-label*="говорит" i]',
+      '[aria-label*="正在讲话" i]',
+      '[aria-label*="話しています" i]',
       '[data-tooltip*="speaking" i]',
+      '[data-tooltip*="hablando" i]',
+      '[data-tooltip*="parle" i]',
+      '[data-tooltip*="spricht" i]',
+      '[data-tooltip*="falando" i]',
+      '[data-tooltip*="parlando" i]',
+      '[data-tooltip*="говорит" i]',
       '[data-is-speaking="true"]',
       '[data-speaking="true"]',
       '[data-active-speaker="true"]',
@@ -90,7 +104,12 @@ initTheme();
 
   function hasActiveSpeakerCue(el: Element): boolean {
     const ariaLabel = String(el.getAttribute("aria-label") || "");
-    if (/\bspeaking\b/i.test(ariaLabel)) return true;
+    if (
+      /(speaking|hablando|parle|spricht|falando|parlando|говорит|正在讲话|話しています)/i.test(
+        ariaLabel,
+      )
+    )
+      return true;
 
     if (
       el.getAttribute("data-is-speaking") === "true" ||
