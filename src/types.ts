@@ -45,6 +45,8 @@ export interface Contradiction {
 }
 
 export interface State {
+  id?: string;
+  savedAt?: string | number;
   isActive: boolean;
   meetingId: string | null;
   meetingUrl: string | null;
@@ -66,12 +68,6 @@ export interface State {
   transcript: TranscriptEntry[];
   audioActive: boolean;
   currentSpeaker?: string | null;
-  targetTabId?: number | null;
-  lastSummarizedAt?: number;
-  duration?: number;
-  participantCount?: number;
-  id?: string;
-  savedAt?: number;
 }
 
 export interface MeetingStorageInfo {
