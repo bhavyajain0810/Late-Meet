@@ -57,7 +57,8 @@
     "Chakraborty",
     "gantt",
     "glassmorphism",
-    "Supabase"
+    "Supabase",
+    "creds"
   ],
   "ignorePaths": [
     "node_modules",
