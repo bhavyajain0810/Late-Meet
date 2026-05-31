@@ -60,7 +60,7 @@ jobs:
             DIFF_HR="+$(numfmt --to=iec-i --suffix=B "$DIFF" 2>/dev/null || echo "${DIFF}B")"
             EMOJI="📈"
           elif [ $DIFF -lt 0 ]; then
-            DIFF_HR="$(numfmt --to=iec-i --suffix=B -- $DIFF 2>/dev/null || echo "${DIFF}B")"
+            DIFF_HR="$(numfmt --to=iec-i --suffix=B -- "$DIFF" 2>/dev/null || echo "${DIFF}B")"
             EMOJI="📉"
           else
             DIFF_HR="No change"
