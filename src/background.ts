@@ -437,8 +437,8 @@ async function executeBroadcast() {
   try {
     // To content scripts — minimal state (they only need isActive/audioActive for the floating button)
     const contentState = {
-      isActive: snapshotData.isActive,
-      audioActive: snapshotData.audioActive,
+      isActive: fullSnapshot.isActive,
+      audioActive: fullSnapshot.audioActive,
     };
     const tabs = await chrome.tabs.query({ url: "https://meet.google.com/*" });
     for (const tab of tabs) {

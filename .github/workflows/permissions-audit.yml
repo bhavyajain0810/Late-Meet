@@ -107,6 +107,7 @@ jobs:
 
       - name: Post Audit Report
         if: always()
+        continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v2
         with:
           header: permissions-audit

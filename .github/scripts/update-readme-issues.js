@@ -9,13 +9,14 @@ const readmePath = path.resolve("README.md");
 
 async function fetchOpenIssues() {
   const url = `https://api.github.com/repos/${repoOwner}/${repoName}/issues?state=open&per_page=100`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `token ${token}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "Late-Meet-Updater",
-    },
-  });
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "Late-Meet-Updater",
+  };
+  if (token) {
+    headers.Authorization = `token ${token}`;
+  }
+  const response = await fetch(url, { headers });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch issues: ${response.status} ${await response.text()}`);

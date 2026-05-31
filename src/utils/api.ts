@@ -183,7 +183,7 @@ export async function elevenlabsTranscribe(
 
   const response = await elevenlabs.speechToText.convert({
     file: file,
-    model_id: ELEVENLABS_STT_MODEL,
+    modelId: ELEVENLABS_STT_MODEL,
   });
 
   return {
