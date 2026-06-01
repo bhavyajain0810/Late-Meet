@@ -218,8 +218,6 @@ body::-webkit-scrollbar-thumb,
   display: block;
 }
 
-
-
 @keyframes fadeSlide {
   from {
     opacity: 0;
@@ -1039,7 +1037,6 @@ body::-webkit-scrollbar-thumb,
   border-color: rgba(239, 68, 68, 0.4);
   color: #fca5a5;
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   *,

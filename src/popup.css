@@ -270,7 +270,6 @@ body::-webkit-scrollbar-thumb {
   animation: pulse-dot 2s infinite;
 }
 
-
 @keyframes pulse-dot {
   0% {
     box-shadow: 0 0 0 0 var(--border-element);
@@ -812,7 +811,6 @@ body::-webkit-scrollbar-thumb {
   cursor: wait;
   pointer-events: none;
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   *,
