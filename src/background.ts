@@ -1372,10 +1372,12 @@ async function stopAudioCapture(reason = "Stopped") {
   isStoppingAudio = true;
   const stopPlan = createAudioCaptureStopPlan(state.audioActive);
   try {
-    try {
-      await chrome.runtime.sendMessage({ type: "OFFSCREEN_STOP_CAPTURE" });
-    } catch {
-      // Ignore if offscreen not running
+    if (state.audioActive) {
+      try {
+        await chrome.runtime.sendMessage({ type: "OFFSCREEN_STOP_CAPTURE" });
+      } catch {
+        // Ignore if offscreen not running
+      }
     }
 
     if (stopPlan.shouldSavePendingSession) {
@@ -1397,6 +1399,8 @@ async function stopAudioCapture(reason = "Stopped") {
       }
     }
 
+    // Allow pending chunk drain to finish before closing the offscreen document
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await closeOffscreenDocumentIfPresent();
   } finally {
     isStoppingAudio = false;
@@ -1445,7 +1449,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   await hydrateState();
   if (state.targetTabId && tabId === state.targetTabId) {
-    if (state.isActive) {
+    if (state.isActive && state.audioActive) {
       await stopAudioCapture("Meeting tab closed");
     } else {
       state.meetingId = null;
