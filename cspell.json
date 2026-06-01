@@ -58,7 +58,8 @@
     "gantt",
     "glassmorphism",
     "Supabase",
-    "creds"
+    "creds",
+    "timeslice"
   ],
   "ignorePaths": [
     "node_modules",
