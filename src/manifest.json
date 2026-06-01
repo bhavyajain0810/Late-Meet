@@ -5,6 +5,7 @@
   "description": "AI meeting copilot for Google Meet with local-first transcription and summaries",
   "permissions": [
     "storage",
+    "unlimitedStorage",
     "tabs",
     "tabCapture",
     "contextMenus",
