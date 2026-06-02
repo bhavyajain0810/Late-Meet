@@ -125,14 +125,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Set the active styling on the matching color dot button
   document.querySelectorAll(".color-dot").forEach((dot) => {
     const dotColor = dot.getAttribute("data-color");
-    if (dotColor === currentAccent) {
+    const isActive = dotColor === currentAccent;
+    if (isActive) {
       dot.classList.add("active");
     }
+    dot.setAttribute("aria-pressed", String(isActive));
 
     // Listen for color grid selections to give instant feedback
     dot.addEventListener("click", () => {
-      document.querySelectorAll(".color-dot").forEach((d) => d.classList.remove("active"));
+      document.querySelectorAll(".color-dot").forEach((d) => {
+        d.classList.remove("active");
+        d.setAttribute("aria-pressed", "false");
+      });
       dot.classList.add("active");
+      dot.setAttribute("aria-pressed", "true");
 
       const selectedTheme = (themeSelect?.value as Settings["theme"]) || "system";
       selectedAccentColor = dot.getAttribute("data-color") || "210, 100%, 50%";
