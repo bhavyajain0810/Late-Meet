@@ -16,11 +16,23 @@ type StorageArea = Pick<chrome.storage.StorageArea, "get" | "set" | "remove"> & 
   getBytesInUse?: chrome.storage.StorageArea["getBytesInUse"];
 };
 
+function normalizeTimestamp(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) return parsed;
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
 function asStoredSession(value: unknown): StoredSession | null {
   if (!value || typeof value !== "object") return null;
-  const session = value as Partial<StoredSession>;
-  if (!session.id || !session.savedAt) return null;
-  return session as StoredSession;
+  const session = value as Partial<StoredSession> & { savedAt?: unknown };
+  const savedAt = normalizeTimestamp(session.savedAt);
+  if (!session.id || savedAt === null) return null;
+  return { ...session, savedAt } as StoredSession;
 }
 
 export function getSavedSessionKey(sessionId: string): string {
