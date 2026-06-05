@@ -577,6 +577,12 @@ initTheme();
   const observer = new MutationObserver(() => {
     if (window.location.pathname.length > 5 && !window.location.pathname.includes("/_")) {
       injectFloatingButton();
+      // Disconnect once the button is successfully injected. Re-injection after
+      // copilot stops is handled by the STATE_UPDATE message listener, so this
+      // observer is no longer needed.
+      if (document.getElementById("mc-float-btn")) {
+        observer.disconnect();
+      }
     }
   });
 
@@ -659,6 +665,15 @@ initTheme();
 
     // Don't handle unknown messages — let other listeners process them
     return false;
+  });
+
+  window.addEventListener("beforeunload", () => {
+    try {
+      // Fire-and-forget message to auto-save the session on tab close
+      chrome.runtime.sendMessage({ type: "SAVE_SESSION" }).catch(() => {});
+    } catch {
+      // Ignore errors during unload
+    }
   });
 
   startParticipantPolling();

@@ -81,6 +81,33 @@ async function persistActionStatuses() {
   }
 }
 
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && changes.actionItemStatuses) {
+    const newVal = changes.actionItemStatuses.newValue;
+    if (newVal && typeof newVal === "object") {
+      for (const [k, v] of Object.entries(newVal)) {
+        actionStatuses.set(k, Boolean(v));
+      }
+
+      const checkboxes = document.querySelectorAll<HTMLInputElement>(".action-checkbox");
+      checkboxes.forEach((cb) => {
+        const meetId = cb.dataset.meetingId || currentMeetingId;
+        const taskText = cb.dataset.task || "";
+        const key = buildActionStatusKey(meetId, taskText);
+        const isDone = actionStatuses.get(key) === true;
+
+        if (cb.checked !== isDone) {
+          cb.checked = isDone;
+          const wrapper = cb.closest(".action-item");
+          const taskDiv = wrapper?.querySelector(".action-task");
+          wrapper?.classList.toggle("action-item--done", isDone);
+          taskDiv?.classList.toggle("action-task--done", isDone);
+        }
+      });
+    }
+  }
+});
+
 document.addEventListener("DOMContentLoaded", async () => {
   // ——— Transcript Search DOM Elements (Queried early to prevent TDZ) ———
   const searchInput = document.getElementById("transcript-search-input") as HTMLInputElement | null;
@@ -434,6 +461,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       if (statusDot) statusDot.classList.remove("active");
       if (statusText) statusText.textContent = "No active meeting";
+      setAudioBtnActive(false);
       if (timerInterval) {
         window.clearInterval(timerInterval);
         timerInterval = null;
@@ -442,7 +470,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Summary
     const summaryEl = document.getElementById("dash-summary");
-    if (summaryEl) summaryEl.textContent = state.summary || "Waiting for conversation to begin...";
+    if (summaryEl) {
+      if (Array.isArray(state.summaryItems) && state.summaryItems.length > 0) {
+        summaryEl.innerHTML = state.summaryItems
+          .map((item) => {
+            const label = escapeHtml(item.timestampLabel || item.timestamp || "00:00");
+            const timestampChunk = item.chunkId
+              ? `<button type="button" class="timestamp-link" data-chunk-id="${escapeHtml(
+                  item.chunkId,
+                )}" aria-label="Jump to transcript at ${label}">${label}</button>`
+              : `<span class="timestamp-text">${label}</span>`;
+            return `
+              <div class="summary-item">
+                <div class="summary-text">${escapeHtml(item.text || "")}</div>
+                <div class="summary-meta">${timestampChunk}</div>
+              </div>
+            `;
+          })
+          .join("");
+      } else {
+        summaryEl.textContent = state.summary || "Waiting for conversation to begin...";
+      }
+    }
 
     // Current Topic
     const topicEl = document.getElementById("dash-current-topic");
@@ -494,6 +543,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Transcript Tab
     if (loadedTabs.has("transcript")) updateTranscript(state.transcript);
+    attachTimestampLinkListeners();
   }
 
   // ——— Sentiment ———
@@ -608,14 +658,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     container.innerHTML = decisions
-      .map(
-        (d) => `
+      .map((d) => {
+        const label = escapeHtml(d.timestampLabel || d.timestamp || "00:00");
+        const timestampChunk = d.chunkId
+          ? `<button type="button" class="timestamp-link" data-chunk-id="${escapeHtml(
+              d.chunkId,
+            )}" aria-label="Jump to transcript at ${label}">${label}</button>`
+          : d.timestamp
+            ? ` <span class="timestamp-text">${escapeHtml(d.timestamp)}</span>`
+            : "";
+
+        return `
       <div class="decision-item">
         <div class="decision-text">${escapeHtml(d.text || "")} ${d.classification === "tentative" ? '<span style="font-size: 11px; background: #FEF3C7; color: #D97706; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Tentative</span>' : ""}</div>
-        <div class="decision-meta">${d.by ? `By ${escapeHtml(d.by)}` : ""} ${d.timestamp ? `• ${escapeHtml(d.timestamp)}` : ""}</div>
+        <div class="decision-meta">${d.by ? `By ${escapeHtml(d.by)}` : ""}${timestampChunk ? ` • ${timestampChunk}` : ""}</div>
       </div>
-    `,
-      )
+    `;
+      })
       .join("");
   }
 
@@ -688,6 +747,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         deadlineDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="margin-right:2px"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>`;
         deadlineDiv.appendChild(document.createTextNode(deadline));
         label.appendChild(deadlineDiv);
+      }
+
+      const timestampLabel = a.timestampLabel || a.timestamp;
+      if (timestampLabel) {
+        const timestampButton = document.createElement("button");
+        timestampButton.type = "button";
+        timestampButton.className = "timestamp-link";
+        timestampButton.textContent = timestampLabel;
+        timestampButton.setAttribute("aria-label", `Jump to transcript at ${timestampLabel}`);
+        if (a.chunkId) {
+          timestampButton.dataset.chunkId = a.chunkId;
+          timestampButton.dataset.hasListener = "true";
+        } else {
+          timestampButton.disabled = true;
+          timestampButton.classList.add("timestamp-text");
+        }
+        label.appendChild(timestampButton);
       }
 
       checkbox.addEventListener("change", () => {
@@ -833,55 +909,110 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ——— Live Transcript ———
+  let renderedTranscriptCount = 0;
+
+  function createTranscriptEntryHTML(entry: TranscriptEntry): string {
+    const timeStr = escapeHtml(entry.timestampLabel || formatDuration(entry.timestamp || 0));
+    const speaker = escapeHtml(entry.speaker || "Unknown");
+    const initials = speaker
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+    const isAudio = (entry.speaker || "") === "Audio";
+    const text = escapeHtml(entry.text || "");
+    const chunkId = entry.id ? `transcript-${escapeHtml(entry.id)}` : "";
+
+    return `
+      <div id="${chunkId}" class="transcript-entry ${isAudio ? "audio-source" : ""}">
+        <div class="transcript-time">${timeStr}</div>
+        <div class="transcript-avatar">${isAudio ? "🎙" : initials}</div>
+        <div class="transcript-body">
+          <div class="transcript-speaker">${speaker}</div>
+          <div class="transcript-text">${text}</div>
+        </div>
+      </div>
+    `;
+  }
+
   function updateTranscript(transcript: TranscriptEntry[]) {
     if (!transcriptContainer) return;
 
     if (!transcript || transcript.length === 0) {
       transcriptContainer.innerHTML =
         '<div class="empty-msg">No transcript yet. Start audio to begin capturing speech.</div>';
-
+      renderedTranscriptCount = 0;
       resetTranscriptSearchState();
-
       return;
     }
 
-    const startTime = transcript[0]?.timestamp || Date.now();
-
-    transcriptContainer.innerHTML = transcript
-      .map((entry) => {
-        const timestamp = entry.timestamp || Date.now();
-        const elapsed = Math.round((timestamp - startTime) / 1000);
-        const timeStr = formatDuration(elapsed);
-        const speaker = escapeHtml(entry.speaker || "Unknown");
-        const initials = speaker
-          .split(" ")
-          .filter(Boolean)
-          .map((w) => w[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2);
-        const isAudio = (entry.speaker || "") === "Audio";
-        const text = escapeHtml(entry.text || "");
-
-        return `
-        <div class="transcript-entry ${isAudio ? "audio-source" : ""}">
-          <div class="transcript-time">${timeStr}</div>
-          <div class="transcript-avatar">${isAudio ? "🎙" : initials}</div>
-          <div class="transcript-body">
-            <div class="transcript-speaker">${speaker}</div>
-            <div class="transcript-text">${text}</div>
-          </div>
-        </div>
-      `;
-      })
-      .join("");
-
-    if (searchInput?.value.trim()) {
-      executeTranscriptSearch(true);
-    } else {
-      transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
-      updateTranscriptSearchControls();
+    // If the transcript shrunk (e.g., session reset), do a full re-render
+    if (transcript.length < renderedTranscriptCount) {
+      renderedTranscriptCount = 0;
+      transcriptContainer.innerHTML = "";
     }
+
+    // Only render new entries that haven't been rendered yet
+    if (transcript.length > renderedTranscriptCount) {
+      // Remove empty message if present
+      const emptyMsg = transcriptContainer.querySelector(".empty-msg");
+      if (emptyMsg) emptyMsg.remove();
+
+      const newEntries = transcript.slice(renderedTranscriptCount);
+      const fragment = document.createDocumentFragment();
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = newEntries.map((e) => createTranscriptEntryHTML(e)).join("");
+      while (wrapper.firstChild) {
+        fragment.appendChild(wrapper.firstChild);
+      }
+      transcriptContainer.appendChild(fragment);
+      renderedTranscriptCount = transcript.length;
+
+      if (searchInput?.value.trim()) {
+        executeTranscriptSearch(true);
+      } else {
+        // Auto-scroll only if user is near the bottom
+        const isNearBottom =
+          transcriptContainer.scrollHeight - transcriptContainer.scrollTop <=
+          transcriptContainer.clientHeight + 80;
+        if (isNearBottom) {
+          transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+        }
+        updateTranscriptSearchControls();
+      }
+    }
+  }
+
+  function navigateToTranscriptChunk(chunkId: string) {
+    const transcriptEl = document.getElementById(`transcript-${chunkId}`);
+    if (!transcriptEl) return;
+    transcriptEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    highlightTranscriptChunk(transcriptEl);
+  }
+
+  function highlightTranscriptChunk(element: HTMLElement) {
+    element.classList.add("transcript-highlight");
+    window.setTimeout(() => {
+      element.classList.remove("transcript-highlight");
+    }, 4000);
+  }
+
+  function attachTimestampLinkListeners() {
+    document.querySelectorAll<HTMLButtonElement>(".timestamp-link").forEach((button) => {
+      const chunkId = button.dataset.chunkId;
+      if (!chunkId) return;
+      if (button.dataset.hasListener) return;
+      button.addEventListener("click", () => navigateToTranscriptChunk(chunkId));
+      button.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigateToTranscriptChunk(chunkId);
+        }
+      });
+      button.dataset.hasListener = "true";
+    });
   }
 
   // ——— Unified Export Helper (Handles both Live & History) ———
@@ -968,6 +1099,87 @@ document.addEventListener("DOMContentLoaded", async () => {
     return md;
   }
 
+  function generatePlainText(state: State): string {
+    const dateVal = state.savedAt || state.startTime || Date.now();
+    const date = new Date(dateVal).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const duration = (state as State & { duration?: number }).duration || 0;
+    let txt = `Meeting Summary — ${date}\n\n`;
+    txt += `Meeting ID: ${state.meetingId || "N/A"}\n`;
+    txt += `Duration: ${formatDuration(duration)}\n`;
+    txt += `Sentiment: ${state.sentiment || "neutral"}\n\n`;
+
+    txt += `Attendees\n`;
+    if (state.participants?.length) {
+      txt += state.participants.map((p) => `  • ${p}`).join("\n") + "\n\n";
+    } else {
+      txt += `  (No participants detected)\n\n`;
+    }
+
+    txt += `Summary\n`;
+    txt += `  ${state.summary || "(No summary available)"}\n\n`;
+
+    txt += `Action Items\n`;
+    if (state.actionItems?.length) {
+      const sessionMeetingId = state.meetingId || "unknown";
+      state.actionItems.forEach((a: ActionItem) => {
+        const task = resolveActionKey(a);
+        if (!task) return;
+        const statusKey = buildActionStatusKey(sessionMeetingId, task);
+        const done = actionStatuses.get(statusKey) === true;
+        txt += done ? `  [done] ${task}` : `  [ ] ${task}`;
+        if (a.owner) txt += ` — ${a.owner}`;
+        if (a.deadline) txt += ` (due: ${a.deadline})`;
+        txt += "\n";
+      });
+      txt += "\n";
+    } else {
+      txt += `  (No action items)\n\n`;
+    }
+
+    txt += `Key Decisions\n`;
+    if (state.decisions?.length) {
+      state.decisions.forEach((d: Decision) => {
+        const byStr = d.by ? " — " + d.by : "";
+        txt += `  • ${d.text}${byStr}\n`;
+      });
+      txt += "\n";
+    } else {
+      txt += `  (No decisions recorded)\n\n`;
+    }
+
+    txt += `Topics Covered\n`;
+    if (state.topics?.length) {
+      state.topics.forEach((t: Topic) => {
+        txt += `  • ${t.name} (${t.status})\n`;
+      });
+      txt += "\n";
+    } else {
+      txt += `  (No topics detected)\n\n`;
+    }
+
+    txt += `Key Insights\n`;
+    if (state.keyInsights?.length) {
+      state.keyInsights
+        .filter((i) => i != null)
+        .forEach((insight: KeyInsight | string | null | undefined) => {
+          const text = typeof insight === "string" ? insight : insight?.text || "";
+          if (text) {
+            txt += `  • ${text}\n`;
+          }
+        });
+      txt += "\n";
+    } else {
+      txt += `  (No insights available)\n\n`;
+    }
+
+    return txt;
+  }
+
   let exportToastTimer: number | null = null;
 
   function showToast(message: string, type: "success" | "error" = "success"): void {
@@ -998,22 +1210,74 @@ document.addEventListener("DOMContentLoaded", async () => {
   const exportBtn = document.getElementById("export-btn") as HTMLButtonElement;
   const exportDropdown = document.getElementById("export-dropdown") as HTMLDivElement;
 
+  function openExportDropdown() {
+    exportDropdown.removeAttribute("hidden");
+    exportBtn.setAttribute("aria-expanded", "true");
+    const firstItem = exportDropdown.querySelector('[role="menuitem"]') as HTMLElement | null;
+    firstItem?.focus();
+  }
+
+  function closeExportDropdown(returnFocus = true) {
+    exportDropdown.setAttribute("hidden", "");
+    exportBtn.setAttribute("aria-expanded", "false");
+    if (returnFocus) exportBtn.focus();
+  }
+
   exportBtn?.addEventListener("click", () => {
     const isHidden = exportDropdown.hasAttribute("hidden");
     if (isHidden) {
-      exportDropdown.removeAttribute("hidden");
-      exportBtn.setAttribute("aria-expanded", "true");
+      openExportDropdown();
     } else {
-      exportDropdown.setAttribute("hidden", "");
-      exportBtn.setAttribute("aria-expanded", "false");
+      closeExportDropdown(false);
+    }
+  });
+
+  exportBtn?.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      if (exportDropdown.hasAttribute("hidden")) {
+        e.preventDefault();
+        openExportDropdown();
+      }
+    }
+  });
+
+  exportDropdown?.addEventListener("keydown", (e: KeyboardEvent) => {
+    const items = Array.from(exportDropdown.querySelectorAll('[role="menuitem"]')) as HTMLElement[];
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+
+    switch (e.key) {
+      case "Escape":
+        e.preventDefault();
+        closeExportDropdown();
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        items[(currentIndex + 1) % items.length]?.focus();
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        items[(currentIndex - 1 + items.length) % items.length]?.focus();
+        break;
+      case "Home":
+        e.preventDefault();
+        items[0]?.focus();
+        break;
+      case "End":
+        e.preventDefault();
+        items.at(-1)?.focus();
+        break;
+      case "Tab":
+        closeExportDropdown(false);
+        break;
+      default:
+        break;
     }
   });
 
   document.addEventListener("click", (e: MouseEvent) => {
     const wrapper = document.getElementById("export-wrapper");
     if (wrapper && !wrapper.contains(e.target as Node)) {
-      exportDropdown?.setAttribute("hidden", "");
-      exportBtn?.setAttribute("aria-expanded", "false");
+      closeExportDropdown(false);
     }
   });
 
@@ -1040,7 +1304,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const state = await chrome.runtime.sendMessage({ type: "GET_STATE" });
       if (!state) throw new Error("No meeting data available");
-      const textContent = generateMarkdown(state);
+      const textContent = generatePlainText(state);
       const filename = `meeting-summary-${new Date().toISOString().slice(0, 10)}.txt`;
       downloadFile(textContent, filename, "text/plain");
       showToast("Downloaded as .txt file", "success");
@@ -1203,17 +1467,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       container
         .querySelectorAll<HTMLButtonElement>(".session-export-btn:not(.session-download-btn)")
         .forEach((btn) => {
-          btn.addEventListener("click", () => {
+          btn.addEventListener("click", async () => {
             const sessionId = btn.dataset.sessionId;
-            const session = sessions.find((s: State) => (s.id ?? "") === sessionId);
+            const session = sessionId ? await loadFullSavedSession(sessionId) : null;
             if (session) exportSessionMarkdown(session);
           });
         });
 
       container.querySelectorAll<HTMLButtonElement>(".session-download-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", async () => {
           const sessionId = btn.dataset.sessionId;
-          const session = sessions.find((s: State) => (s.id ?? "") === sessionId);
+          const session = sessionId ? await loadFullSavedSession(sessionId) : null;
           if (session) downloadSessionMarkdown(session);
         });
       });
@@ -1258,6 +1522,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ——— HISTORY EXPORT ACTIONS (Now perfectly unified with the dynamic generator!) ———
+  async function loadFullSavedSession(sessionId: string): Promise<State | null> {
+    try {
+      const session: State | null = await chrome.runtime.sendMessage({
+        type: "GET_SAVED_SESSION",
+        sessionId,
+      });
+
+      if (!session) {
+        showToast("Saved session data could not be found", "error");
+        return null;
+      }
+
+      return session;
+    } catch (err) {
+      const e = err as Error;
+      showToast("Failed to load saved session: " + (e.message || String(e)), "error");
+      return null;
+    }
+  }
+
   function exportSessionMarkdown(session: State) {
     const md = generateMarkdown(session);
 
