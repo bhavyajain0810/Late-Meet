@@ -1,7 +1,17 @@
 import { State, Topic, TranscriptEntry, TimelineEvent, Decision, ActionItem } from "./types";
 import { initTheme } from "./theme.js";
 import { resolveManualMeetTab } from "./meetingTabs";
-import { escapeHtml, sanitizeDataAttr } from "./utils/sanitize.js";
+// ——— Security Helpers ———
+function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return "";
+  const div = document.createElement("div");
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function sanitizeDataAttr(value: unknown): string {
+  return String(value || "").replace(/['"<>&]/g, "");
+}
 
 initTheme();
 

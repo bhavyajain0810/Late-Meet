@@ -3,7 +3,13 @@ import { initTheme } from "./theme.js";
 import { getApiCredentials, saveApiCredentials } from "./utils/credentials";
 import { validateOpenAIKey } from "./utils/api.js";
 import { resolveManualMeetTab } from "./meetingTabs";
-import { escapeHtml, sanitizeDataAttr } from "./utils/sanitize.js";
+// ——— Security Helpers ———
+function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return "";
+  const div = document.createElement("div");
+  div.textContent = String(str);
+  return div.innerHTML;
+}
 
 initTheme();
 
