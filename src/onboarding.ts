@@ -137,7 +137,7 @@ export async function renderOnboarding(container: HTMLElement) {
           } else {
             openaiStatus.textContent = "Invalid OpenAI key.";
           }
-        } catch (err) {
+        } catch {
           openaiStatus.textContent = "Validation error.";
         }
       });
@@ -153,7 +153,7 @@ export async function renderOnboarding(container: HTMLElement) {
           } else {
             elevenStatus.textContent = "Invalid ElevenLabs key.";
           }
-        } catch (err) {
+        } catch {
           elevenStatus.textContent = "Validation error.";
         }
       });
