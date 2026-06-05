@@ -1,6 +1,7 @@
 import { State, Topic, TranscriptEntry, TimelineEvent, Decision, ActionItem } from "./types";
 import { initTheme } from "./theme.js";
 import { resolveManualMeetTab } from "./meetingTabs";
+import { escapeHtml, sanitizeDataAttr } from "./utils/sanitize.js";
 
 initTheme();
 
@@ -656,17 +657,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         const elapsed = Math.round((timestamp - startTime) / 1000);
         const timeStr = formatDuration(elapsed);
         const speaker = escapeHtml(entry.speaker || "Unknown");
-        const initials = speaker
-          .split(" ")
-          .map((w) => w[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2);
+        const initials = escapeHtml(
+          speaker
+            .split(" ")
+            .map((w) => w[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2),
+        );
         const isAudio = (entry.speaker || "") === "Audio";
         const text = escapeHtml(entry.text || "");
 
         return `
-        <div class="transcript-entry ${isAudio ? "audio-source" : ""}">
+         <div class="transcript-entry ${isAudio ? "audio-source" : ""}">  /*isAudio is boolean - safe */
           <div class="transcript-time">${timeStr}</div>
           <div class="transcript-avatar">${isAudio ? "🎙" : initials}</div>
           <div class="transcript-body">
@@ -822,13 +825,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // ——— Helpers ———
-  function escapeHtml(str: string) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
   function sanitizeTopicStatus(status: string) {
     return status === "completed" ? "completed" : "active";
   }
@@ -867,7 +863,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           const actionCount = s.actionItems?.length || 0;
 
           return `
-          <div class="session-item" data-session-id="${s.id}">
+          <div class="session-item" data-session-id="${sanitizeDataAttr(s.id)}">
             <div class="session-item-header">
               <div>
                 <div class="session-item-date">${escapeHtml(date)} at ${escapeHtml(time)}</div>
@@ -884,15 +880,15 @@ document.addEventListener("DOMContentLoaded", async () => {
               <span>${actionCount} actions</span>
             </div>
             <div class="session-item-actions">
-              <button class="session-export-btn" data-session-id="${s.id}" title="Export as Markdown">
+              <button class="session-export-btn" data-session-id="${sanitizeDataAttr(s.id)}"title="Export as Markdown">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
                 Export
               </button>
-              <button class="session-export-btn session-download-btn" data-session-id="${s.id}" title="Download as Markdown File">
+              <button class="session-export-btn session-download-btn"data-session-id="${sanitizeDataAttr(s.id)}" title="Download as Markdown File">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
                 Download
               </button>
-              <button class="session-delete-btn" data-session-id="${s.id}" title="Delete session">
+              <button class="session-delete-btn" data-session-id="${sanitizeDataAttr(s.id)}" title="Delete session">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                 Delete
               </button>

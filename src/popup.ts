@@ -3,6 +3,7 @@ import { initTheme } from "./theme.js";
 import { getApiCredentials, saveApiCredentials } from "./utils/credentials";
 import { validateOpenAIKey } from "./utils/api.js";
 import { resolveManualMeetTab } from "./meetingTabs";
+import { escapeHtml, sanitizeDataAttr } from "./utils/sanitize.js";
 
 initTheme();
 
@@ -513,12 +514,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function sanitizeTopicStatus(status: string) {
     return status === "completed" ? "completed" : "active";
-  }
-
-  function escapeHtml(value: string | null | undefined) {
-    const div = document.createElement("div");
-    div.textContent = String(value || "");
-    return div.innerHTML;
   }
 
   function shakeElement(el: HTMLElement | null) {
