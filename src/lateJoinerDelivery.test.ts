@@ -141,38 +141,38 @@ async function sendMessage(message: any) {
 installChromeMock();
 await import("./background.ts");
 
-test("late-joiner briefing uses private overlay by default", async () => {
+test("late-joiner workflow: Bob joins (private-only), then Carol joins (with public chat)", async () => {
+  // Step 1 — Bob joins while public chat is disabled; only private overlay expected.
   tabMessages = [];
   settings = { lateJoinerBriefing: true, publicLateJoinerChat: false };
 
-  const response = await sendMessage({
+  const response1 = await sendMessage({
     type: "PARTICIPANTS_UPDATED",
     participants: ["Alice", "Bob"],
     selfName: "Alice",
   });
 
-  assert.equal(response.success, true);
-  assert.deepEqual(response.joiners, ["Bob"]);
+  assert.equal(response1.success, true);
+  assert.deepEqual(response1.joiners, ["Bob"]);
   assert.equal(tabMessages.length, 1);
   assert.equal(tabMessages[0].tabId, 7);
   assert.equal(tabMessages[0].message.type, "SHOW_BRIEF");
   assert.equal(tabMessages[0].message.targetName, "Bob");
   assert.match(tabMessages[0].message.briefContent, /Bob/i);
-});
 
-test("late-joiner briefing posts to public chat only when explicitly enabled", async () => {
+  // Step 2 — Carol joins after public chat is opted in; both overlay and chat message expected.
+  // Bob is already a known participant from step 1, so only Carol is detected as a new joiner.
   tabMessages = [];
   settings = { lateJoinerBriefing: true, publicLateJoinerChat: true };
 
-  const response = await sendMessage({
+  const response2 = await sendMessage({
     type: "PARTICIPANTS_UPDATED",
     participants: ["Alice", "Bob", "Carol"],
     selfName: "Alice",
   });
 
-  assert.equal(response.success, true);
-  assert.deepEqual(response.joiners, ["Carol"]);
-
+  assert.equal(response2.success, true);
+  assert.deepEqual(response2.joiners, ["Carol"]);
   assert.deepEqual(
     tabMessages.map((entry) => entry.message.type),
     ["SHOW_BRIEF", "SEND_CHAT_MESSAGE"],
