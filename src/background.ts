@@ -1299,7 +1299,7 @@ async function startAudioCapture(
   }
   isStartingAudio = true;
 
-  const createdSession = !state.audioActive;
+  const createdSession = !state.isActive || !state.meetingId;
 
   try {
     await ensureOffscreenDocument();
@@ -1410,10 +1410,12 @@ async function stopAudioCapture(reason = "Stopped") {
   isStoppingAudio = true;
   const stopPlan = createAudioCaptureStopPlan(state.audioActive);
   try {
-    try {
-      await chrome.runtime.sendMessage({ type: "OFFSCREEN_STOP_CAPTURE" });
-    } catch {
-      // Ignore if offscreen not running
+    if (state.audioActive) {
+      try {
+        await chrome.runtime.sendMessage({ type: "OFFSCREEN_STOP_CAPTURE" });
+      } catch {
+        // Ignore if offscreen not running
+      }
     }
 
     if (stopPlan.shouldSavePendingSession) {
@@ -1435,6 +1437,8 @@ async function stopAudioCapture(reason = "Stopped") {
       }
     }
 
+    // Allow pending chunk drain to finish before closing the offscreen document
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await closeOffscreenDocumentIfPresent();
   } finally {
     isStoppingAudio = false;
@@ -1484,7 +1488,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   perTabParticipants.delete(tabId);
   await hydrateState();
   if (state.targetTabId && tabId === state.targetTabId) {
-    if (state.isActive) {
+    if (state.isActive && state.audioActive) {
       await stopAudioCapture("Meeting tab closed");
     } else {
       state.meetingId = null;
@@ -1495,6 +1499,16 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Fast-path: waveform data is display-only and does not need service worker
+  // processing. Return immediately to avoid unnecessary hydration and state work.
+  if (message?.type === "WAVEFORM_DATA" || message?.type === "OFFSCREEN_LOG") {
+    if (message.type === "OFFSCREEN_LOG" && typeof message.message === "string") {
+      console.log("[LateMeet][offscreen]", message.message);
+    }
+    sendResponse({ success: true });
+    return false;
+  }
+
   (async () => {
     await hydrateState();
     switch (message?.type) {
@@ -1547,12 +1561,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case "UNEXPECTED_TRACK_END": {
         await stopAudioCapture(message.reason || "Unexpected track end");
-        sendResponse({ success: true });
-        return;
-      }
-
-      case "OFFSCREEN_LOG": {
-        console.log("[LateMeet][offscreen]", message.message);
         sendResponse({ success: true });
         return;
       }
@@ -1830,8 +1838,21 @@ function createContextMenu() {
   });
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   createContextMenu();
+  try {
+    const vals = await chrome.storage.local.get(["onboardingCompleted"]);
+    if (!vals?.onboardingCompleted) {
+      const url = chrome.runtime.getURL("src/options.html?onboarding=1");
+      try {
+        await chrome.tabs.create({ url });
+      } catch (e) {
+        console.warn("[LateMeet] Could not open onboarding tab on install:", e);
+      }
+    }
+  } catch (e) {
+    console.warn("[LateMeet] onInstalled storage check failed:", e);
+  }
 });
 
 chrome.runtime.onStartup.addListener(() => {
