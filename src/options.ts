@@ -174,6 +174,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Run initial theme application right away so options page isn't broken
   applyThemePreview(currentTheme, currentAccent);
 
+  // Enable transitions after initial application completes to prevent page-load transitions
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.body.classList.remove("no-transitions");
+    });
+  });
+
   // Set the active styling on the matching color dot button
   document.querySelectorAll(".color-dot").forEach((dot) => {
     const dotColor = dot.getAttribute("data-color");
