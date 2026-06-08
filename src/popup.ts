@@ -6,6 +6,7 @@ import {
   unlockCredentials,
   isUnlocked,
 } from "./utils/credentials";
+import { escapeHtml, formatDuration, sanitizeTopicStatus } from "./utils/domHelpers";
 import { validateOpenAIKey } from "./utils/api.js";
 import { resolveManualMeetTab } from "./meetingTabs";
 import { startPopupAudioCapture } from "./popupCapture";
@@ -154,12 +155,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // ——— Open Dashboard ———
   document.getElementById("open-dashboard")?.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tabId = tabs[0]?.id;
-      if (tabId !== undefined) {
-        chrome.sidePanel.open({ tabId });
-      }
-    });
+    chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
   });
 
   // ——— Start Copilot (Audio Capture with User Gesture) ———
@@ -206,10 +202,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     const textEl = btn.querySelector(".copilot-btn-text");
     const originalText = textEl?.textContent || "Start";
 
+    // --- Pre-flight Check for API Keys ---
+    const keys = await getApiCredentials();
+    if (!keys.openai_api_key) {
+      alert("Please configure your OpenAI API Key in the Settings before starting.");
+      chrome.runtime.openOptionsPage();
+      return;
+    }
+
     if (lastState?.audioActive) {
       console.log("[LateMeet] Audio already active, skipping capture request.");
       return;
     }
+
+    // Check if ElevenLabs API key exists before starting
+    const creds = await getApiCredentials();
+    if (!creds.elevenlabs_api_key) {
+      if (textEl) {
+        textEl.textContent = "⚠️ Missing ElevenLabs Key";
+        setTimeout(() => {
+          if (textEl) textEl.textContent = originalText;
+        }, 2000);
+      }
+      return; // Stop here - don't start recording
+    }
+    // ========== END OF ADDED CODE ==========
 
     try {
       // Show loading state
@@ -448,6 +465,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("discard-session-btn")?.addEventListener("click", async (e) => {
+    if (
+      !confirm(
+        "Are you sure you want to discard this session? All meeting intelligence will be permanently lost.",
+      )
+    ) {
+      return;
+    }
     const btn = e.currentTarget as HTMLButtonElement;
     const saveBtn = document.getElementById("save-session-btn") as HTMLButtonElement | null;
     const originalText = btn.textContent || "Discard";
@@ -616,13 +640,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ——— Helpers ———
-  function formatDuration(seconds: number) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-
   function getSentimentEmoji(sentiment: string) {
     const map: Record<string, string> = {
       positive: "😊",
@@ -631,11 +648,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       mixed: "🤔",
     };
     return map[sentiment] || "—";
-  }
-
-  function sanitizeTopicStatus(status: string): string {
-    if (status === "completed" || status === "unresolved") return status;
-    return "active";
   }
 
   function shakeElement(el: HTMLElement | null) {
