@@ -9,8 +9,9 @@
  */
 export function escapeHtml(value: unknown): string {
   if (value === null || value === undefined) return "";
+  const str = typeof value === "object" ? JSON.stringify(value) : String(value);
   const div = document.createElement("div");
-  div.textContent = String(value);
+  div.textContent = str;
   return div.innerHTML;
 }
 
@@ -19,7 +20,7 @@ export function escapeHtml(value: unknown): string {
  * Prevents class injection attacks
  */
 export function sanitizeClassName(value: unknown, allowed: string[]): string {
-  const str = String(value || "");
+  const str = value && typeof value === "object" ? "" : String(value ?? "");
   return allowed.includes(str) ? str : allowed[0];
 }
 
@@ -28,5 +29,6 @@ export function sanitizeClassName(value: unknown, allowed: string[]): string {
  * Prevents attribute injection
  */
 export function sanitizeDataAttr(value: unknown): string {
-  return String(value || "").replace(/['"<>&]/g, "");
+  const str = value && typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+  return str.replace(/['"<>&]/g, "");
 }

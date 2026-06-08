@@ -55,7 +55,7 @@ function applyThemePreview(theme: "system" | "light" | "dark", accent: string) {
 
   let activeTheme = theme;
   if (theme === "system") {
-    activeTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    activeTheme = globalThis.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
 
   root.setAttribute("data-theme", activeTheme);
@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const onboardingRoot = document.getElementById("onboarding-root") as HTMLDivElement | null;
   const viewOnboardingBtn = document.getElementById("view-onboarding") as HTMLButtonElement | null;
 
-  if (window.location.search.includes("onboarding=1") && onboardingRoot) {
+  if (globalThis.location.search.includes("onboarding=1") && onboardingRoot) {
     const setupView = document.getElementById("setup-view") as HTMLDivElement | null;
     const mainView = document.getElementById("main-view") as HTMLDivElement | null;
     if (setupView) setupView.style.display = "none";
@@ -137,8 +137,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clear-data-btn")?.addEventListener("click", async () => {
     if (confirm("Are you sure you want to clear all data? This cannot be undone.")) {
       await chrome.storage.local.clear();
+      if (typeof chrome !== "undefined" && chrome.storage?.session) {
+        await chrome.storage.session.clear();
+      }
       alert("All data cleared successfully. The page will now reload.");
-      window.location.reload();
+      globalThis.location.reload();
     }
   });
 

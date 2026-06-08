@@ -1473,20 +1473,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       const markdown = generateMarkdown(state);
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(markdown);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = markdown;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        textArea.style.top = "-999999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        textArea.remove();
-      }
+      await navigator.clipboard.writeText(markdown);
       showToast("Copied to clipboard", "success");
     } catch (err) {
       console.error(err);
@@ -1974,18 +1961,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         showToast("No summary available to copy", "error");
         return;
       }
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.cssText = "position:fixed;left:-999999px;top:-999999px;";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        textArea.remove();
-      }
+      await navigator.clipboard.writeText(text);
       showToast("Summary copied to clipboard!", "success");
     } catch {
       showToast("Failed to copy summary", "error");

@@ -22,7 +22,7 @@ const defaultState = (): Omit<TabState, "tabId"> => ({
 const memorySessionStorage = new Map<string, any>();
 
 async function getSessionStorage() {
-  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.session) {
+  if (typeof chrome !== "undefined" && chrome.storage?.session) {
     return chrome.storage.session;
   }
   return {
