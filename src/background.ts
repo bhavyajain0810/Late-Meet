@@ -683,8 +683,16 @@ async function ensureOffscreenDocument() {
 
   // createDocument resolves when the document is created, but the offscreen JS
   // still needs a moment to execute and register its chrome.runtime.onMessage
-  // listener. Without this delay the first OFFSCREEN_START_CAPTURE is lost.
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // listener. Ping the document to establish a handshake before resolving.
+  for (let i = 0; i < 20; i++) {
+    try {
+      const res = await chrome.runtime.sendMessage({ type: "OFFSCREEN_PING" });
+      if (res?.success) return;
+    } catch {
+      // ignore "Receiving end does not exist" message errors during early load
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
 }
 
 async function closeOffscreenDocumentIfPresent() {

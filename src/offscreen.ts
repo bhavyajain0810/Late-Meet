@@ -581,6 +581,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   (async () => {
+    if (message.type === "OFFSCREEN_PING") {
+      sendResponse({ success: true });
+      return;
+    }
+
     if (message.type === "OFFSCREEN_START_CAPTURE") {
       try {
         const captureInfo = await startCapture(
