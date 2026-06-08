@@ -550,6 +550,7 @@ interface Settings {
   aiModel?: string;
   vadThreshold?: number;
   lateJoinerBriefing?: boolean;
+  publicLateJoinerChat?: boolean;
   topicDetection?: boolean;
   decisionDetection?: boolean;
   actionExtraction?: boolean;
@@ -1209,6 +1210,18 @@ async function sendChatToTab(tabId: number, text: string) {
   }
 }
 
+async function showPrivateBriefToTab(tabId: number, briefContent: string, targetName: string) {
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: "SHOW_BRIEF",
+      briefContent,
+      targetName,
+    });
+  } catch (err) {
+    console.error("[LateMeet] Failed to show private late-joiner brief:", err);
+  }
+}
+
 async function maybeWelcomeJoiners(tabId: number | undefined, joiners: string[]) {
   if (!joiners.length || getDuration() <= MIN_MEETING_DURATION_FOR_WELCOME || !tabId) {
     return;
@@ -1244,7 +1257,10 @@ async function maybeWelcomeJoiners(tabId: number | undefined, joiners: string[])
 
     try {
       const text = await generateLateJoinerMessage(name);
-      await sendChatToTab(tabId, text);
+      await showPrivateBriefToTab(tabId, text, name);
+      if (settings.publicLateJoinerChat === true) {
+        await sendChatToTab(tabId, text);
+      }
     } catch (err) {
       console.error("[LateMeet] Failed to welcome joiner:", err);
     } finally {
