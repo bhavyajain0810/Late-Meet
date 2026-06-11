@@ -84,7 +84,7 @@ body {
   margin-bottom: 32px;
   padding: 24px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-main);
+  border: 1.5px solid hsl(var(--accent-color));
   border-radius: 12px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -151,7 +151,7 @@ body {
   width: 100%;
   padding: 12px 16px;
   background: var(--bg-card);
-  border: 1px solid var(--border-sub);
+  border: 1.5px solid hsl(var(--accent-color));
   border-radius: 8px;
   color: var(--text-main);
   font-family: inherit;
@@ -299,6 +299,7 @@ body {
   cursor: pointer;
   inset: 0;
   background: var(--border-element);
+  border: 1.5px solid hsl(var(--accent-color));
   border-radius: 24px;
   transition: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
