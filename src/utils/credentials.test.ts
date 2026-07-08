@@ -249,6 +249,103 @@ test("saving partial credentials does not wipe out omitted keys", async () => {
   assert.ok((local.openai_api_key as string).startsWith("enc:"));
 });
 
+test("lockCredentials purges plaintext credentials from session storage", async () => {
+  const { session } = setupChromeStorage();
+
+  await unlockCredentials("test-passphrase");
+  await saveApiCredentials({
+    openai_api_key: "sk-session-secret",
+    elevenlabs_api_key: "el-session-secret",
+  });
+
+  assert.equal(session.openai_api_key, "sk-session-secret");
+  assert.equal(session.elevenlabs_api_key, "el-session-secret");
+
+  lockCredentials();
+  await Promise.resolve();
+
+  assert.equal(isUnlocked(), false);
+  assert.equal(session.openai_api_key, undefined);
+  assert.equal(session.elevenlabs_api_key, undefined);
+});
+
+test("auto-lock timeout purges plaintext credentials from session storage", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+
+  let scheduledCallback: (() => void) | undefined;
+
+  (globalThis as any).setTimeout = (callback: () => void) => {
+    scheduledCallback = callback;
+    return 1;
+  };
+
+  (globalThis as any).clearTimeout = () => undefined;
+
+  try {
+    const { session } = setupChromeStorage();
+
+    await unlockCredentials("test-passphrase");
+    await saveApiCredentials({
+      openai_api_key: "sk-auto-lock-secret",
+      elevenlabs_api_key: "el-auto-lock-secret",
+    });
+
+    assert.equal(isUnlocked(), true);
+    assert.equal(session.openai_api_key, "sk-auto-lock-secret");
+    assert.equal(session.elevenlabs_api_key, "el-auto-lock-secret");
+
+    assert.ok(scheduledCallback);
+    scheduledCallback();
+
+    await Promise.resolve();
+
+    assert.equal(isUnlocked(), false);
+    assert.equal(session.openai_api_key, undefined);
+    assert.equal(session.elevenlabs_api_key, undefined);
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+});
+
+test("credential access refreshes the inactivity lock timer", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+
+  const autoLockDelayMs = 30 * 60 * 1000;
+  let setTimeoutCalls = 0;
+  let clearTimeoutCalls = 0;
+  const delays: number[] = [];
+
+  (globalThis as any).setTimeout = (_callback: () => void, delay?: number) => {
+    setTimeoutCalls += 1;
+    delays.push(delay ?? 0);
+    return setTimeoutCalls;
+  };
+
+  (globalThis as any).clearTimeout = () => {
+    clearTimeoutCalls += 1;
+  };
+
+  try {
+    setupChromeStorage();
+
+    await unlockCredentials("test-passphrase");
+    assert.equal(setTimeoutCalls, 1);
+    assert.deepEqual(delays, [autoLockDelayMs]);
+
+    await getApiCredentials();
+
+    assert.equal(setTimeoutCalls, 2);
+    assert.equal(clearTimeoutCalls >= 1, true);
+    assert.deepEqual(delays, [autoLockDelayMs, autoLockDelayMs]);
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+});
+
 after(() => {
   lockCredentials();
 });
